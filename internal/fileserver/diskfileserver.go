@@ -53,8 +53,7 @@ func (d *diskFileserver) Save(_ context.Context, file File) (*FilePath, error) {
 		}
 	}()
 
-	fd.Write(file.Data)
-	fd.Close()
+	_, _ = fd.Write(file.Data)
 
 	return &FilePath{
 		Path: fileFullPath,
