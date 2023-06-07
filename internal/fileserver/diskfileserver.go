@@ -40,8 +40,8 @@ func (d *diskFileserver) Save(_ context.Context, file File) (*FilePath, error) {
 
 	fileFullPath := d.path + "/" + file.Name
 	if err := os.MkdirAll(filepath.Dir(fileFullPath), 0770); err != nil {
-        return nil, err
-    }
+		return nil, err
+	}
 	fd, err := os.Create(fileFullPath)
 	if err != nil {
 		d.logger.Error().Msgf("Error to create file %s", err.Error())
@@ -54,7 +54,14 @@ func (d *diskFileserver) Save(_ context.Context, file File) (*FilePath, error) {
 	}()
 
 	fd.Write(file.Data)
+	fd.Close()
+
 	return &FilePath{
 		Path: fileFullPath,
 	}, nil
+}
+
+func (d *diskFileserver) Delete(_ context.Context, fileName string) error {
+	d.logger.Info().Msgf("Deleting file %s", fileName)
+	return os.Remove(fileName)
 }

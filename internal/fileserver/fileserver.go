@@ -5,6 +5,7 @@ import (
 )
 
 type Fileserver interface {
-	Save(context context.Context, file File) (*FilePath, error)
-	Read(context context.Context, fileName string) (*File, error)
+	Save(ctx context.Context, file File) (*FilePath, error)
+	Read(ctx context.Context, fileName string) (*File, error)
+	Delete(ctx context.Context, fileName string) error
 }

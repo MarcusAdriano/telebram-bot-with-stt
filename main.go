@@ -11,6 +11,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"github.com/marcusadriano/sound-stt-tgbot/internal/audioconverter"
+	"github.com/marcusadriano/sound-stt-tgbot/internal/fileserver"
 	"github.com/marcusadriano/sound-stt-tgbot/internal/transcript"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
@@ -51,7 +52,8 @@ func main() {
 		log.Panic(err)
 	}
 
-	audioConverter = audioconverter.NewFfmpeg(&logger)
+	diskFileServer := fileserver.NewDiskFileserver(&logger, os.TempDir())
+	audioConverter = audioconverter.NewFfmpeg(diskFileServer)
 	transcriptor = transcript.NewWhisperGptTranscriptor(&logger, chatGptApiKey)
 
 	bot.Debug = os.Getenv("TG_BOT_DEBUG_MODE") == "true"

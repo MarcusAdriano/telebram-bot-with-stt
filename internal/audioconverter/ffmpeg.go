@@ -5,19 +5,24 @@ import (
 	"os/exec"
 
 	"github.com/marcusadriano/sound-stt-tgbot/internal/fileserver"
-	"github.com/rs/zerolog"
 )
 
 type ffmpeg struct {
-	tmpDir     string
 	fileServer fileserver.Fileserver
+	CmdRunner  FfmpegCmdRunner
 }
 
-func NewFfmpeg(logger *zerolog.Logger) AudioConverter {
-	tmpDir := "/tmp"
+func NewFfmpeg(fs fileserver.Fileserver) AudioConverter {
 	return &ffmpeg{
-		tmpDir:     tmpDir,
-		fileServer: fileserver.NewDiskFileserver(logger, tmpDir),
+		fileServer: fs,
+		CmdRunner:  &defaultCmdRunner{},
+	}
+}
+
+func NewFfmpegWithCmdRunner(fs fileserver.Fileserver, cmdRunner FfmpegCmdRunner) AudioConverter {
+	return &ffmpeg{
+		fileServer: fs,
+		CmdRunner:  cmdRunner,
 	}
 }
 
@@ -28,16 +33,27 @@ func (f *ffmpeg) ToMp3(ctx context.Context, fileData []byte, fileName string) (*
 		return nil, err
 	}
 
-	outputFilePath := f.tmpDir + "/" + fileName + ".mp3"
-	cmd := exec.Command("ffmpeg", "-i", fpath.Path, "-f", "mp3", "-ab", "192000", "-vn", outputFilePath)
-	if err := cmd.Run(); err != nil {
-		return nil, err
-	}
+	outputFilePath := fpath.Path + ".mp3"
+	f.CmdRunner.Run("ffmpeg", "-i", fpath.Path, "-f", "mp3", "-ab", "192000", "-vn", outputFilePath)
 
 	file, err := f.fileServer.Read(ctx, outputFilePath)
 	if err != nil {
 		return nil, err
 	}
 
+	_ = f.fileServer.Delete(ctx, outputFilePath)
+
 	return &Result{Data: file.Data}, nil
+}
+
+type FfmpegCmdRunner interface {
+	Run(name string, args ...string) error
+}
+
+type defaultCmdRunner struct {
+}
+
+func (d *defaultCmdRunner) Run(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	return cmd.Run()
 }
