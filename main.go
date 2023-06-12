@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 	"time"
 
@@ -20,7 +19,7 @@ func main() {
 
 	err := godotenv.Load()
 	if err != nil {
-		logger.Log(nil).Fatal().Err(err).Msg("Error loading .env file")
+		logger.Default().Fatal().Err(err).Msg("Error loading .env file")
 		return
 	}
 
@@ -29,7 +28,7 @@ func main() {
 
 	bot, err := tgbotapi.NewBotAPI(tgBotToken)
 	if err != nil {
-		log.Panic(err)
+		logger.Default().Panic().Err(err).Msg("Error creating bot")
 	}
 
 	diskFileServer := fileserver.NewDiskFileserver(os.TempDir())
@@ -37,7 +36,7 @@ func main() {
 	transcriptor := transcript.NewWhisperGptTranscriptor(chatGptApiKey)
 
 	bot.Debug = os.Getenv("TG_BOT_DEBUG_MODE") == "true"
-	logger.Log(nil).Info().Msgf("Authorized on account %s", bot.Self.UserName)
+	logger.Default().Info().Msgf("Authorized on account %s", bot.Self.UserName)
 
 	textHandler := internal.NewTextHandler()
 	voiceHandler := internal.NewVoiceHandler(audioConverter, transcriptor)

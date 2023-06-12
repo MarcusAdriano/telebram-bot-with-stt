@@ -45,6 +45,10 @@ func Log(ctx context.Context) *zerolog.Logger {
 	return logger
 }
 
+func Default() *zerolog.Logger {
+	return logger
+}
+
 func Context(ctx context.Context, chatId int64) context.Context {
 
 	reqId := uuid.New().String()

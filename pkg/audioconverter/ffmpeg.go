@@ -1,9 +1,11 @@
 package audioconverter
 
 import (
+	"bytes"
 	"context"
 	"os/exec"
 
+	"github.com/marcusadriano/tgbot-stt/internal/logger"
 	fileserver2 "github.com/marcusadriano/tgbot-stt/pkg/fileserver"
 )
 
@@ -13,6 +15,18 @@ type ffmpeg struct {
 }
 
 func NewFfmpeg(fs fileserver2.Fileserver) AudioConverter {
+
+	checkFfmpeg := exec.Command("ffmpeg", "-version")
+	checkStdOut := bytes.Buffer{}
+
+	checkFfmpeg.Stdout = &checkStdOut
+	err := checkFfmpeg.Run()
+	if err != nil {
+		logger.Default().Warn().Msg("your system does not have ffmpeg installed, please install it")
+	} else {
+		logger.Default().Info().Msg("Ffmpeg is installed with version:\n" + checkStdOut.String())
+	}
+
 	return &ffmpeg{
 		fileServer: fs,
 		CmdRunner:  &defaultCmdRunner{},
