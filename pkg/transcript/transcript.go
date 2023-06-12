@@ -1,5 +1,7 @@
 package transcript
 
+import "context"
+
 type Transcriptor interface {
-	Transcript(fileData []byte, fileName string) (*Transcription, error)
+	Transcript(ctx context.Context, fileData []byte, fileName string) (*Transcription, error)
 }

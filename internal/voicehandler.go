@@ -5,22 +5,20 @@ import (
 	"fmt"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/marcusadriano/tgbot-stt/internal/logger"
 	"github.com/marcusadriano/tgbot-stt/pkg/audioconverter"
 	"github.com/marcusadriano/tgbot-stt/pkg/telegram"
 	"github.com/marcusadriano/tgbot-stt/pkg/transcript"
-	"github.com/rs/zerolog"
 )
 
 type voiceHandler struct {
 	telegram.Handler
-	logger         *zerolog.Logger
 	audioConverter audioconverter.AudioConverter
 	transcript     transcript.Transcriptor
 }
 
-func NewVoiceHandler(logger *zerolog.Logger, audioConverter audioconverter.AudioConverter, transcript transcript.Transcriptor) telegram.Handler {
+func NewVoiceHandler(audioConverter audioconverter.AudioConverter, transcript transcript.Transcriptor) telegram.Handler {
 	vh := voiceHandler{
-		logger:         logger,
 		audioConverter: audioConverter,
 		transcript:     transcript,
 	}
@@ -45,14 +43,14 @@ func (v voiceHandler) Handle(ctx context.Context, bot *tgbotapi.BotAPI, update t
 	}
 	result, err := v.audioConverter.ToMp3(ctx, fileData, file.FilePath)
 	if err != nil {
-		v.logger.Error().Err(err).Msg("Error to convert file")
+		logger.Log(ctx).Error().Err(err).Msg("Error to convert file")
 		handleError(bot, update, err)
 		return
 	}
 
-	transcription, err := v.transcript.Transcript(result.Data, "audio.mp3")
+	transcription, err := v.transcript.Transcript(ctx, result.Data, "audio.mp3")
 	if err != nil {
-		v.logger.Error().Err(err).Msg("Error to transcript file")
+		logger.Log(ctx).Error().Err(err).Msg("Error to transcript file")
 		handleError(bot, update, err)
 		return
 	}
@@ -62,8 +60,7 @@ func (v voiceHandler) Handle(ctx context.Context, bot *tgbotapi.BotAPI, update t
 		transcriptionTextForLog = transcriptionTextForLog[:20] + "..."
 	}
 
-	v.logger.Info().
-		Int64("chat_id", update.Message.Chat.ID).
+	logger.Log(ctx).Info().
 		Str("original_file_path", file.FilePath).
 		Msgf("Transcription: %s", transcriptionTextForLog)
 

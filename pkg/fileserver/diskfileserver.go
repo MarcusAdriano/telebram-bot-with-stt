@@ -5,23 +5,21 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rs/zerolog"
+	"github.com/marcusadriano/tgbot-stt/internal/logger"
 )
 
 type diskFileserver struct {
-	logger *zerolog.Logger
-	path   string
+	path string
 }
 
-func NewDiskFileserver(logger *zerolog.Logger, path string) Fileserver {
+func NewDiskFileserver(path string) Fileserver {
 	return &diskFileserver{
-		logger: logger,
-		path:   path,
+		path: path,
 	}
 }
 
-func (d *diskFileserver) Read(_ context.Context, name string) (*File, error) {
-	d.logger.Info().Msgf("Reading file %s", name)
+func (d *diskFileserver) Read(ctx context.Context, name string) (*File, error) {
+	logger.Log(ctx).Info().Msgf("Reading file %s", name)
 
 	data, err := os.ReadFile(name)
 	if err != nil {
@@ -34,9 +32,9 @@ func (d *diskFileserver) Read(_ context.Context, name string) (*File, error) {
 	}, nil
 }
 
-func (d *diskFileserver) Save(_ context.Context, file File) (*FilePath, error) {
+func (d *diskFileserver) Save(ctx context.Context, file File) (*FilePath, error) {
 
-	d.logger.Info().Msgf("Saving file %s at %s", file.Name, d.path)
+	logger.Log(ctx).Info().Msgf("Saving file %s at %s", file.Name, d.path)
 
 	fileFullPath := d.path + "/" + file.Name
 	if err := os.MkdirAll(filepath.Dir(fileFullPath), 0770); err != nil {
@@ -44,12 +42,12 @@ func (d *diskFileserver) Save(_ context.Context, file File) (*FilePath, error) {
 	}
 	fd, err := os.Create(fileFullPath)
 	if err != nil {
-		d.logger.Error().Msgf("Error to create file %s", err.Error())
+		logger.Log(ctx).Error().Msgf("Error to create file %s", err.Error())
 		return nil, err
 	}
 	defer func() {
 		if err := fd.Close(); err != nil {
-			d.logger.Error().Msgf("Error to close file %s", err.Error())
+			logger.Log(ctx).Error().Msgf("Error to close file %s", err.Error())
 		}
 	}()
 
@@ -60,7 +58,7 @@ func (d *diskFileserver) Save(_ context.Context, file File) (*FilePath, error) {
 	}, nil
 }
 
-func (d *diskFileserver) Delete(_ context.Context, fileName string) error {
-	d.logger.Info().Msgf("Deleting file %s", fileName)
+func (d *diskFileserver) Delete(ctx context.Context, fileName string) error {
+	logger.Log(ctx).Info().Msgf("Deleting file %s", fileName)
 	return os.Remove(fileName)
 }

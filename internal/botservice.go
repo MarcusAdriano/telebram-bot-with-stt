@@ -4,12 +4,11 @@ import (
 	"context"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/marcusadriano/tgbot-stt/internal/logger"
 	"github.com/marcusadriano/tgbot-stt/pkg/telegram"
-	"github.com/rs/zerolog"
 )
 
 type BotService struct {
-	logger   *zerolog.Logger
 	bot      *tgbotapi.BotAPI
 	handlers *telegram.TgBotHandlers
 }
@@ -25,7 +24,7 @@ func handleError(bot *tgbotapi.BotAPI, update tgbotapi.Update, err error) {
 	bot.Send(msg)
 }
 
-func NewBotService(logger *zerolog.Logger, bot *tgbotapi.BotAPI, handlers ...telegram.Handler) *BotService {
+func NewBotService(bot *tgbotapi.BotAPI, handlers ...telegram.Handler) *BotService {
 
 	botHandlers := telegram.NewTgBotHandlersBuilder().
 		Bot(bot).
@@ -33,7 +32,6 @@ func NewBotService(logger *zerolog.Logger, bot *tgbotapi.BotAPI, handlers ...tel
 		Build()
 
 	return &BotService{
-		logger:   logger,
 		bot:      bot,
 		handlers: botHandlers,
 	}
@@ -47,12 +45,14 @@ func (b *BotService) Start() {
 
 	for update := range updates {
 
-		ctx := context.Background()
-
-		b.logger.Info().
-			Int64("chat-id", update.Message.Chat.ID).
-			Msgf("Message received")
+		ctx := createRequestContext(update)
+		logger.Log(ctx).Info().Msg("Received new update")
 
 		go b.handlers.Handle(ctx, update)
 	}
+}
+
+func createRequestContext(update tgbotapi.Update) context.Context {
+	ctx := context.Background()
+	return logger.Context(ctx, update.Message.Chat.ID)
 }
