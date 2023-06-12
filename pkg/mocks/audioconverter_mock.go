@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	audioconverter "github.com/marcusadriano/sound-stt-tgbot/internal/audioconverter"
+	"github.com/marcusadriano/tgbot-stt/pkg/audioconverter"
 )
 
 // MockAudioConverter is a mock of AudioConverter interface.

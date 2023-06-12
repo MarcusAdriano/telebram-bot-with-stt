@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	fileserver "github.com/marcusadriano/sound-stt-tgbot/internal/fileserver"
+	"github.com/marcusadriano/tgbot-stt/pkg/fileserver"
 )
 
 // MockFileserver is a mock of Fileserver interface.

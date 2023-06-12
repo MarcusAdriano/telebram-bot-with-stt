@@ -1,27 +1,18 @@
 package main
 
 import (
-	"context"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
-	"github.com/marcusadriano/sound-stt-tgbot/internal/audioconverter"
-	"github.com/marcusadriano/sound-stt-tgbot/internal/fileserver"
-	"github.com/marcusadriano/sound-stt-tgbot/internal/transcript"
+	"github.com/marcusadriano/tgbot-stt/internal"
+	"github.com/marcusadriano/tgbot-stt/pkg/audioconverter"
+	"github.com/marcusadriano/tgbot-stt/pkg/fileserver"
+	"github.com/marcusadriano/tgbot-stt/pkg/transcript"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
-)
-
-var (
-	chatGptApiKey  string
-	logger         zerolog.Logger
-	audioConverter audioconverter.AudioConverter
-	transcriptor   transcript.Transcriptor
 )
 
 func main() {
@@ -30,7 +21,7 @@ func main() {
 
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
-	logger = zerolog.New(os.Stdout).With().
+	logger := zerolog.New(os.Stdout).With().
 		Caller().
 		Timestamp().
 		Logger().
@@ -44,7 +35,7 @@ func main() {
 	botLogger := &tgbotLogger{logger: &logger}
 	tgbotapi.SetLogger(botLogger)
 
-	chatGptApiKey = os.Getenv("WHISPER_GPT_API_KEY")
+	chatGptApiKey := os.Getenv("WHISPER_GPT_API_KEY")
 	tgBotToken := os.Getenv("TG_BOT_TOKEN")
 
 	bot, err := tgbotapi.NewBotAPI(tgBotToken)
@@ -53,131 +44,16 @@ func main() {
 	}
 
 	diskFileServer := fileserver.NewDiskFileserver(&logger, os.TempDir())
-	audioConverter = audioconverter.NewFfmpeg(diskFileServer)
-	transcriptor = transcript.NewWhisperGptTranscriptor(&logger, chatGptApiKey)
+	audioConverter := audioconverter.NewFfmpeg(diskFileServer)
+	transcriptor := transcript.NewWhisperGptTranscriptor(&logger, chatGptApiKey)
 
 	bot.Debug = os.Getenv("TG_BOT_DEBUG_MODE") == "true"
-
 	logger.Info().Msgf("Authorized on account %s", bot.Self.UserName)
 
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-
-	updates := bot.GetUpdatesChan(u)
-
-	for update := range updates {
-		go defaultHandle(bot, update)
-	}
-}
-
-func defaultHandle(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-
-	logger.Info().
-		Str("customer", update.Message.Chat.UserName).
-		Int64("chat-id", update.Message.Chat.ID).
-		Msg("Receive a message")
-
-	if update.Message != nil {
-
-		message := update.Message
-		if message.Voice != nil {
-			go handleAudio(bot, update)
-		} else {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-			msg.ReplyToMessageID = update.Message.MessageID
-
-			bot.Send(msg)
-		}
-	}
-}
-
-func handleAudio(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	message := update.Message
-	if message.Voice != nil {
-
-		ctx := context.Background()
-
-		tgFile, err := downloadTelegramVoice(bot, message, update)
-		if err != nil {
-			logger.Error().Err(err).Msg("Error to download file")
-			return
-		}
-
-		result, err := audioConverter.ToMp3(ctx, tgFile.data, tgFile.file.FilePath)
-		if err != nil {
-			logger.Error().Err(err).Msg("Error to convert file")
-			handleError(bot, update, err)
-			return
-		}
-
-		transcription, err := transcriptor.Transcript(result.Data, result.Filename)
-		if err != nil {
-			logger.Error().Err(err).Msg("Error to transcript file")
-			handleError(bot, update, err)
-			return
-		}
-
-		transcriptionTextForLog := transcription.Text
-		if len(transcriptionTextForLog) > 20 {
-			transcriptionTextForLog = transcriptionTextForLog[:20] + "..."
-		}
-
-		logger.Info().
-			Int64("chat_id", update.Message.Chat.ID).
-			Str("original_file_path", tgFile.file.FilePath).
-			Msgf("Transcription: %s", transcriptionTextForLog)
-
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, transcription.Text)
-		msg.ReplyToMessageID = update.Message.MessageID
-		bot.Send(msg)
-	}
-}
-
-type tgDownloadedFile struct {
-	file tgbotapi.File
-	data []byte
-}
-
-func downloadTelegramVoice(bot *tgbotapi.BotAPI, message *tgbotapi.Message, update tgbotapi.Update) (*tgDownloadedFile, error) {
-	file, err := bot.GetFile(tgbotapi.FileConfig{
-		FileID: message.Voice.FileID,
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	fileLink := file.Link(bot.Token)
-	logger.Info().Msgf("Downloading file %s", fileLink)
-
-	req, _ := http.NewRequest("GET", fileLink, nil)
-	res, err := http.DefaultClient.Do(req)
-
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	fileData, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return &tgDownloadedFile{
-		file: file,
-		data: fileData,
-	}, nil
-}
-
-func handleError(bot *tgbotapi.BotAPI, update tgbotapi.Update, err error) {
-
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Sorry, I can't listen you")
-	msg.ReplyToMessageID = update.Message.MessageID
-	bot.Send(msg)
-
-	msg = tgbotapi.NewMessage(update.Message.Chat.ID, err.Error())
-	msg.ReplyToMessageID = update.Message.MessageID
-	bot.Send(msg)
+	textHandler := internal.NewTextHandler()
+	voiceHandler := internal.NewVoiceHandler(&logger, audioConverter, transcriptor)
+	service := internal.NewBotService(&logger, bot, textHandler, voiceHandler)
+	service.Start()
 }
 
 type tgbotLogger struct {

@@ -4,22 +4,22 @@ import (
 	"context"
 	"os/exec"
 
-	"github.com/marcusadriano/sound-stt-tgbot/internal/fileserver"
+	fileserver2 "github.com/marcusadriano/tgbot-stt/pkg/fileserver"
 )
 
 type ffmpeg struct {
-	fileServer fileserver.Fileserver
+	fileServer fileserver2.Fileserver
 	CmdRunner  FfmpegCmdRunner
 }
 
-func NewFfmpeg(fs fileserver.Fileserver) AudioConverter {
+func NewFfmpeg(fs fileserver2.Fileserver) AudioConverter {
 	return &ffmpeg{
 		fileServer: fs,
 		CmdRunner:  &defaultCmdRunner{},
 	}
 }
 
-func NewFfmpegWithCmdRunner(fs fileserver.Fileserver, cmdRunner FfmpegCmdRunner) AudioConverter {
+func NewFfmpegWithCmdRunner(fs fileserver2.Fileserver, cmdRunner FfmpegCmdRunner) AudioConverter {
 	return &ffmpeg{
 		fileServer: fs,
 		CmdRunner:  cmdRunner,
@@ -28,13 +28,16 @@ func NewFfmpegWithCmdRunner(fs fileserver.Fileserver, cmdRunner FfmpegCmdRunner)
 
 func (f *ffmpeg) ToMp3(ctx context.Context, fileData []byte, fileName string) (*Result, error) {
 
-	fpath, err := f.fileServer.Save(ctx, fileserver.File{Name: fileName, Data: fileData})
+	fpath, err := f.fileServer.Save(ctx, fileserver2.File{Name: fileName, Data: fileData})
 	if err != nil {
 		return nil, err
 	}
 
 	outputFilePath := fpath.Path + ".mp3"
-	f.CmdRunner.Run("ffmpeg", "-i", fpath.Path, "-f", "mp3", "-ab", "192000", "-vn", outputFilePath)
+	err = f.CmdRunner.Run("ffmpeg", "-i", fpath.Path, "-f", "mp3", "-ab", "192000", "-vn", outputFilePath)
+	if err != nil {
+		return nil, err
+	}
 
 	file, err := f.fileServer.Read(ctx, outputFilePath)
 	if err != nil {

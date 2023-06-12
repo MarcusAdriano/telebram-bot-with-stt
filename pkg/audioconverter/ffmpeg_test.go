@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/marcusadriano/sound-stt-tgbot/internal/audioconverter"
-	"github.com/marcusadriano/sound-stt-tgbot/internal/fileserver"
-	"github.com/marcusadriano/sound-stt-tgbot/internal/mocks"
+	"github.com/marcusadriano/tgbot-stt/pkg/audioconverter"
+	"github.com/marcusadriano/tgbot-stt/pkg/fileserver"
+	"github.com/marcusadriano/tgbot-stt/pkg/mocks"
 )
 
 type cmdRunnerMock struct {

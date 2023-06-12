@@ -1,4 +1,4 @@
-module github.com/marcusadriano/sound-stt-tgbot
+module github.com/marcusadriano/tgbot-stt
 
 go 1.20
 
