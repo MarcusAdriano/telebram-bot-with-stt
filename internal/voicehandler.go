@@ -17,10 +17,10 @@ type voiceHandler struct {
 	transcript     transcript.Transcriptor
 }
 
-func NewVoiceHandler(audioConverter audioconverter.AudioConverter, transcript transcript.Transcriptor) telegram.Handler {
+func NewVoiceHandler(audioConverter audioconverter.AudioConverter, stt transcript.Transcriptor) telegram.Handler {
 	vh := voiceHandler{
 		audioConverter: audioConverter,
-		transcript:     transcript,
+		transcript:     stt,
 	}
 
 	return telegram.Handler{
