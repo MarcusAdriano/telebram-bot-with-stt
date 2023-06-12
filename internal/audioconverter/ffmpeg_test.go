@@ -21,6 +21,8 @@ func TestFfmpegToMp3(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	const mp3FileName = "fileName.mp3"
+
 	fileServer := mocks.NewMockFileserver(ctrl)
 	fileServer.
 		EXPECT().
@@ -30,13 +32,13 @@ func TestFfmpegToMp3(t *testing.T) {
 
 	fileServer.
 		EXPECT().
-		Read(gomock.Any(), "fileName.mp3").
+		Read(gomock.Any(), mp3FileName).
 		Return(&fileserver.File{Data: []byte("fileData")}, nil).
 		Times(1)
 
 	fileServer.
 		EXPECT().
-		Delete(gomock.Any(), gomock.Eq("fileName.mp3")).
+		Delete(gomock.Any(), gomock.Eq(mp3FileName)).
 		Return(nil).
 		Times(1)
 
@@ -49,5 +51,9 @@ func TestFfmpegToMp3(t *testing.T) {
 
 	if string(result.Data) != "fileData" {
 		t.Fatalf("Expected fileData, got %s", result.Data)
+	}
+
+	if result.Filename != mp3FileName {
+		t.Fatalf("Expected fileName.mp3, got %s", result.Filename)
 	}
 }

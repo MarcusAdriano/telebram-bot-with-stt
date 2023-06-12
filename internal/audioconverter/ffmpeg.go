@@ -43,7 +43,7 @@ func (f *ffmpeg) ToMp3(ctx context.Context, fileData []byte, fileName string) (*
 
 	_ = f.fileServer.Delete(ctx, outputFilePath)
 
-	return &Result{Data: file.Data}, nil
+	return &Result{Data: file.Data, Filename: outputFilePath}, nil
 }
 
 type FfmpegCmdRunner interface {

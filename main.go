@@ -72,7 +72,10 @@ func main() {
 
 func defaultHandle(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 
-	logger.Info().Msgf("Receive a message from %s", update.Message.From.UserName)
+	logger.Info().
+		Str("customer", update.Message.Chat.UserName).
+		Int64("chat-id", update.Message.Chat.ID).
+		Msg("Receive a message")
 
 	if update.Message != nil {
 
@@ -91,44 +94,57 @@ func defaultHandle(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 func handleAudio(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	message := update.Message
 	if message.Voice != nil {
-		go func() {
 
-			ctx := context.Background()
+		ctx := context.Background()
 
-			file, fileData := downloadTelegramVoice(bot, message, update)
-			if fileData == nil {
-				return
-			}
-			result, err := audioConverter.ToMp3(ctx, fileData, file.FilePath)
-			if err != nil {
-				logger.Error().Err(err).Msg("Error to convert file")
-				handleError(bot, update, err)
-				return
-			}
+		tgFile, err := downloadTelegramVoice(bot, message, update)
+		if err != nil {
+			logger.Error().Err(err).Msg("Error to download file")
+			return
+		}
 
-			transcription, err := transcriptor.Transcript(result.Data, "audio.mp3")
-			if err != nil {
-				logger.Error().Err(err).Msg("Error to transcript file")
-				handleError(bot, update, err)
-				return
-			}
+		result, err := audioConverter.ToMp3(ctx, tgFile.data, tgFile.file.FilePath)
+		if err != nil {
+			logger.Error().Err(err).Msg("Error to convert file")
+			handleError(bot, update, err)
+			return
+		}
 
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, transcription.Text)
-			msg.ReplyToMessageID = update.Message.MessageID
-			bot.Send(msg)
-		}()
+		transcription, err := transcriptor.Transcript(result.Data, result.Filename)
+		if err != nil {
+			logger.Error().Err(err).Msg("Error to transcript file")
+			handleError(bot, update, err)
+			return
+		}
+
+		transcriptionTextForLog := transcription.Text
+		if len(transcriptionTextForLog) > 20 {
+			transcriptionTextForLog = transcriptionTextForLog[:20] + "..."
+		}
+
+		logger.Info().
+			Int64("chat_id", update.Message.Chat.ID).
+			Str("original_file_path", tgFile.file.FilePath).
+			Msgf("Transcription: %s", transcriptionTextForLog)
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, transcription.Text)
+		msg.ReplyToMessageID = update.Message.MessageID
+		bot.Send(msg)
 	}
 }
 
-func downloadTelegramVoice(bot *tgbotapi.BotAPI, message *tgbotapi.Message, update tgbotapi.Update) (tgbotapi.File, []byte) {
+type tgDownloadedFile struct {
+	file tgbotapi.File
+	data []byte
+}
+
+func downloadTelegramVoice(bot *tgbotapi.BotAPI, message *tgbotapi.Message, update tgbotapi.Update) (*tgDownloadedFile, error) {
 	file, err := bot.GetFile(tgbotapi.FileConfig{
 		FileID: message.Voice.FileID,
 	})
 
 	if err != nil {
-		logger.Error().Err(err).Msg("Error to download file")
-		handleError(bot, update, err)
-		return tgbotapi.File{}, nil
+		return nil, err
 	}
 
 	fileLink := file.Link(bot.Token)
@@ -138,19 +154,19 @@ func downloadTelegramVoice(bot *tgbotapi.BotAPI, message *tgbotapi.Message, upda
 	res, err := http.DefaultClient.Do(req)
 
 	if err != nil {
-		logger.Error().Err(err).Msg("Error to download file")
-		handleError(bot, update, err)
-		return tgbotapi.File{}, nil
+		return nil, err
 	}
 	defer res.Body.Close()
 
 	fileData, err := io.ReadAll(res.Body)
 	if err != nil {
-		logger.Error().Err(err).Msg("Error to download file")
-		handleError(bot, update, err)
-		return tgbotapi.File{}, nil
+		return nil, err
 	}
-	return file, fileData
+
+	return &tgDownloadedFile{
+		file: file,
+		data: fileData,
+	}, nil
 }
 
 func handleError(bot *tgbotapi.BotAPI, update tgbotapi.Update, err error) {
@@ -169,9 +185,9 @@ type tgbotLogger struct {
 }
 
 func (t *tgbotLogger) Printf(format string, v ...interface{}) {
-	t.logger.Info().Msgf(format, v)
+	t.logger.Info().Msgf(format, v...)
 }
 
 func (t *tgbotLogger) Println(v ...interface{}) {
-	t.logger.Info().Msgf("%s", v)
+	t.logger.Info().Msgf("%s", v...)
 }
