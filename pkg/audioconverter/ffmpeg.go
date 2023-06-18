@@ -6,15 +6,15 @@ import (
 	"os/exec"
 
 	"github.com/marcusadriano/tgbot-stt/internal/logger"
-	fileserver2 "github.com/marcusadriano/tgbot-stt/pkg/fileserver"
+	"github.com/marcusadriano/tgbot-stt/pkg/fileserver"
 )
 
 type ffmpeg struct {
-	fileServer fileserver2.Fileserver
+	fileServer fileserver.Fileserver
 	CmdRunner  FfmpegCmdRunner
 }
 
-func NewFfmpeg(fs fileserver2.Fileserver) AudioConverter {
+func NewFfmpeg(fs fileserver.Fileserver) AudioConverter {
 
 	checkFfmpeg := exec.Command("ffmpeg", "-version")
 	checkStdOut := bytes.Buffer{}
@@ -33,7 +33,7 @@ func NewFfmpeg(fs fileserver2.Fileserver) AudioConverter {
 	}
 }
 
-func NewFfmpegWithCmdRunner(fs fileserver2.Fileserver, cmdRunner FfmpegCmdRunner) AudioConverter {
+func NewFfmpegWithCmdRunner(fs fileserver.Fileserver, cmdRunner FfmpegCmdRunner) AudioConverter {
 	return &ffmpeg{
 		fileServer: fs,
 		CmdRunner:  cmdRunner,
@@ -42,7 +42,7 @@ func NewFfmpegWithCmdRunner(fs fileserver2.Fileserver, cmdRunner FfmpegCmdRunner
 
 func (f *ffmpeg) ToMp3(ctx context.Context, fileData []byte, fileName string) (*Result, error) {
 
-	fpath, err := f.fileServer.Save(ctx, fileserver2.File{Name: fileName, Data: fileData})
+	fpath, err := f.fileServer.Save(ctx, fileserver.File{Name: fileName, Data: fileData})
 	if err != nil {
 		return nil, err
 	}
