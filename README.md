@@ -1,5 +1,7 @@
 ## Trivial Telegram BOT with STT for Voice Messages
 
+[![Go](https://github.com/MarcusAdriano/tgbot-stt/actions/workflows/go.yml/badge.svg)](https://github.com/MarcusAdriano/tgbot-stt/actions/workflows/go.yml)
+
 It's a very simple bot thats converts voice messages to text using openai's whisper API.
 
 ## Goals
